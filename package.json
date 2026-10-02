@@ -1,0 +1,25 @@
+{
+  "name": "compliance-preview-auditor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bonus Track: audit a live pull-request preview URL with Cloudflare Browser Rendering — axe-core accessibility, third-party requests made before consent, and screenshot checks by Clef vision.",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev --remote",
+    "deploy": "wrangler deploy",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cloudflare/puppeteer": "^1.4.0",
+    "axe-core": "^4.11.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261002.1",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.7",
+    "wrangler": "^4.146.0"
+  }
+}

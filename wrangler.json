@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "compliance-preview-auditor",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "browser": { "binding": "BROWSER" },
+  "ai": { "binding": "AI" },
+  "rules": [{ "type": "Text", "globs": ["**/axe.min.js"], "fallthrough": false }],
+  "observability": { "enabled": true }
+}

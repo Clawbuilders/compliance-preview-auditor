@@ -1,0 +1,7 @@
+compliance-preview-auditor
+Copyright (c) 2026 ClawBuilders (MIT)
+
+Bundles axe-core (https://github.com/dequelabs/axe-core), MPL-2.0, loaded as a text module and injected into audited pages.
+Uses @cloudflare/puppeteer (Apache-2.0) with Cloudflare Browser Rendering.
+
+This flags risk for humans. It is not legal advice.
