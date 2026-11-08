@@ -17,7 +17,7 @@
  *
  * The browser resolves the name again when it navigates, so a DNS-rebinding host could still answer differently the second
  * time. These checks state intent and stop the easy cases; the outer boundary is Cloudflare's network: Browser Rendering runs
- * there and cannot reach your private network or the Worker's own host.
+ * there and cannot reach your private network.
  */
 export type UrlCheck = { ok: true; url: URL } | { ok: false; reason: string };
 
