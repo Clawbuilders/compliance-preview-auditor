@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderReport, type AuditResult } from "../src/report";
+import { renderReport, verdict, type AuditResult } from "../src/report";
 
 const base: AuditResult = {
   url: "https://pr-7.my-app.pages.dev/",
@@ -79,5 +79,26 @@ describe("renderReport", () => {
   it("marks requests the auditor blocked", () => {
     const md = renderReport({ ...base, thirdParties: [{ host: "10.0.0.1", requests: 2, blocked: 2 }] });
     expect(md).toMatch(/10\.0\.0\.1.*all blocked by the auditor/);
+  });
+
+  it("labels probabilities between 35% and 65% as inconclusive instead of a finding", () => {
+    const md = renderReport({ ...base, vision: { consent_banner_visible: 0.47, low_contrast_text: 0.54, layout_broken: 0.5 } });
+    expect(md).toMatch(/Consent banner: inconclusive — check by hand \(47%\)/);
+    expect(md).toMatch(/Low-contrast text: inconclusive — check by hand \(54%\)/);
+    expect(md).toMatch(/Broken layout: inconclusive — check by hand \(50%\)/);
+    expect(md).not.toMatch(/no consent banner was visible/i);
+    expect(md).not.toMatch(/appears to be visible/i);
+    expect(md).toMatch(/unclear whether a consent banner was visible/i);
+  });
+
+  it("keeps clear answers as answers", () => {
+    const md = renderReport({ ...base, vision: { consent_banner_visible: 0.9, low_contrast_text: 0.71, layout_broken: 0.02 } });
+    expect(md).toMatch(/appears to be visible \(90%\)/);
+    expect(md).toContain("Low-contrast text: 71%");
+    expect(md).not.toMatch(/inconclusive — check by hand \(/);
+  });
+
+  it("puts the inconclusive band at 35%..65% inclusive", () => {
+    expect([0.34, 0.35, 0.5, 0.65, 0.66].map(verdict)).toEqual(["unlikely", "inconclusive", "inconclusive", "inconclusive", "likely"]);
   });
 });

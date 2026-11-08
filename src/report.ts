@@ -25,6 +25,19 @@ const code = (s: string) => "`" + s.replace(/`/g, "").replace(/</g, "‹").repla
 const pct = (p: number) => `${Math.round(p * 100)}%`;
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
+/** Probabilities near 50% are not findings: the model is unsure, so a person should look. */
+export const INCONCLUSIVE_LOW = 0.35;
+export const INCONCLUSIVE_HIGH = 0.65;
+const INCONCLUSIVE = "inconclusive — check by hand";
+
+export function verdict(p: number): "unlikely" | "inconclusive" | "likely" {
+  if (p < INCONCLUSIVE_LOW) return "unlikely";
+  if (p > INCONCLUSIVE_HIGH) return "likely";
+  return "inconclusive";
+}
+
+const judged = (p: number) => (verdict(p) === "inconclusive" ? `${INCONCLUSIVE} (${pct(p)})` : pct(p));
+
 function hostLine(t: ThirdParty): string {
   const tracker = t.tracker ? ` — **tracker: ${esc(t.tracker)}**` : "";
   const blocked = t.blocked ? ` — ${t.blocked === t.requests ? "all" : t.blocked} blocked by the auditor (internal or IP-literal address)` : "";
@@ -70,12 +83,17 @@ export function renderReport(r: AuditResult): string {
   if (!r.vision) {
     lines.push("The screenshot check was unavailable for this run (the vision model did not answer), so nothing is claimed about banners, contrast or layout.");
   } else {
-    lines.push("Clef vision returns probabilities, not certainties.", "");
+    lines.push("Clef vision returns probabilities, not certainties. Anything between 35% and 65% is reported as inconclusive.", "");
     const banner = r.vision.consent_banner_visible;
-    lines.push(banner < 0.5 ? `- No consent banner was visible (probability one is visible: ${pct(banner)}).` : `- A consent banner appears to be visible (${pct(banner)}).`);
-    lines.push(`- Low-contrast text: ${pct(r.vision.low_contrast_text)}`, `- Broken layout: ${pct(r.vision.layout_broken)}`);
-    if (banner < 0.5 && r.thirdParties.some((t) => t.tracker)) {
-      lines.push("", "Trackers loaded and no consent banner was visible — a consent question worth a human look.");
+    const bannerLine = {
+      unlikely: `- No consent banner was visible (probability one is visible: ${pct(banner)}).`,
+      likely: `- A consent banner appears to be visible (${pct(banner)}).`,
+      inconclusive: `- Consent banner: ${INCONCLUSIVE} (${pct(banner)}).`,
+    }[verdict(banner)];
+    lines.push(bannerLine, `- Low-contrast text: ${judged(r.vision.low_contrast_text)}`, `- Broken layout: ${judged(r.vision.layout_broken)}`);
+    if (r.thirdParties.some((t) => t.tracker)) {
+      if (verdict(banner) === "unlikely") lines.push("", "Trackers loaded and no consent banner was visible — a consent question worth a human look.");
+      if (verdict(banner) === "inconclusive") lines.push("", "Trackers loaded and it is unclear whether a consent banner was visible — check the page by hand.");
     }
   }
 
