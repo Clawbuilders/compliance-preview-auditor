@@ -1,4 +1,5 @@
 import { auditUrl } from "./audit";
+import { AuditRefusedError } from "./errors";
 import { renderReport } from "./report";
 import { cachedResolver, dohResolver, validateTargetUrl } from "./url";
 import type { AiBinding } from "./vision";
@@ -10,6 +11,8 @@ interface Env {
   RUN_TOKEN?: string;
   /** Optional allow-list of hosts, comma or space separated, e.g. "clawbuilders.club, *.my-app.pages.dev". */
   ALLOWED_HOSTS?: string;
+  /** Optional hosts that belong to the audited site but sit on another domain (e.g. its API), same format as ALLOWED_HOSTS. */
+  FIRST_PARTY_HOSTS?: string;
 }
 
 /** Constant-time string comparison. */
@@ -42,11 +45,12 @@ export default {
     if (!target.ok) return Response.json({ error: target.reason }, { status: 400 });
 
     try {
-      const result = await auditUrl(env, target.url);
+      const result = await auditUrl(env, target.url, resolve);
       const markdown = renderReport(result);
       if (url.searchParams.get("format") === "markdown") return new Response(markdown, { headers: { "content-type": "text/markdown; charset=utf-8" } });
       return Response.json({ result, markdown });
     } catch (e) {
+      if (e instanceof AuditRefusedError) return Response.json({ error: e.message }, { status: 400 });
       console.error("audit failed", e);
       return Response.json({ error: `The audit could not be completed: ${e instanceof Error ? e.message : String(e)}` }, { status: 502 });
     }

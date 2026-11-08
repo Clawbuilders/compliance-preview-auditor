@@ -8,6 +8,7 @@ const base: AuditResult = {
   violations: [
     { id: "image-alt", impact: "critical", help: "Images must have alternative text", helpUrl: "https://x/image-alt", wcag: ["1.1.1"], nodes: 2, samples: ["img.hero", "img.logo"] },
   ],
+  firstParties: [],
   thirdParties: [
     { host: "www.google-analytics.com", requests: 3, tracker: "google-analytics" },
     { host: "fonts.gstatic.com", requests: 1 },
@@ -64,5 +65,19 @@ describe("renderReport", () => {
 
   it("always carries the disclaimer", () => {
     expect(renderReport(base)).toMatch(/not legal advice/i);
+  });
+
+  it("lists first-party hosts separately from third parties, and only when there are any", () => {
+    expect(renderReport(base)).not.toMatch(/first-party requests/i);
+    const md = renderReport({ ...base, firstParties: [{ host: "api.my-app.pages.dev", requests: 4 }] });
+    const [third, first] = [md.indexOf("### Third parties"), md.indexOf("### First-party requests")];
+    expect(first).toBeGreaterThan(third);
+    expect(md.slice(first)).toContain("api.my-app.pages.dev");
+    expect(md.slice(third, first)).not.toContain("api.my-app.pages.dev");
+  });
+
+  it("marks requests the auditor blocked", () => {
+    const md = renderReport({ ...base, thirdParties: [{ host: "10.0.0.1", requests: 2, blocked: 2 }] });
+    expect(md).toMatch(/10\.0\.0\.1.*all blocked by the auditor/);
   });
 });

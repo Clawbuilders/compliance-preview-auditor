@@ -12,6 +12,8 @@ export interface AuditResult {
   finalUrl: string;
   title: string;
   violations: AxeViolationSummary[];
+  /** Other hosts of the audited site: same registrable domain, or listed in FIRST_PARTY_HOSTS. */
+  firstParties: ThirdParty[];
   thirdParties: ThirdParty[];
   vision: VisionAnswers | null;
   visionTier: "clef" | "unavailable";
@@ -22,6 +24,12 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 const code = (s: string) => "`" + s.replace(/`/g, "").replace(/</g, "‹").replace(/>/g, "›").replace(/@/g, "@​") + "`";
 const pct = (p: number) => `${Math.round(p * 100)}%`;
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+function hostLine(t: ThirdParty): string {
+  const tracker = t.tracker ? ` — **tracker: ${esc(t.tracker)}**` : "";
+  const blocked = t.blocked ? ` — ${t.blocked === t.requests ? "all" : t.blocked} blocked by the auditor (internal or IP-literal address)` : "";
+  return `- ${code(t.host)} — ${plural(t.requests, "request", "requests")}${tracker}${blocked}`;
+}
 
 export function renderReport(r: AuditResult): string {
   const host = (() => {
@@ -49,7 +57,13 @@ export function renderReport(r: AuditResult): string {
     lines.push("No third-party requests were made before any consent interaction.");
   } else {
     lines.push("The page was loaded and **nothing was clicked** — no consent was given — yet it contacted:");
-    for (const t of r.thirdParties) lines.push(`- ${code(t.host)} — ${plural(t.requests, "request", "requests")}${t.tracker ? ` — **tracker: ${esc(t.tracker)}**` : ""}`);
+    for (const t of r.thirdParties) lines.push(hostLine(t));
+  }
+
+  if (r.firstParties.length) {
+    lines.push("", "### First-party requests");
+    lines.push("Other hosts of the audited site (same registrable domain, or listed in `FIRST_PARTY_HOSTS`). Listed for completeness; these are not third parties.");
+    for (const t of r.firstParties) lines.push(hostLine(t));
   }
 
   lines.push("", "### Screenshot checks");
