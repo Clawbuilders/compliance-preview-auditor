@@ -1,6 +1,6 @@
 import { auditUrl } from "./audit";
 import { renderReport } from "./report";
-import { validateTargetUrl } from "./url";
+import { cachedResolver, dohResolver, validateTargetUrl } from "./url";
 import type { AiBinding } from "./vision";
 
 interface Env {
@@ -8,7 +8,7 @@ interface Env {
   AI: AiBinding;
   /** Bearer token for POST /audit. Unset = the endpoint does not exist (404), never open. */
   RUN_TOKEN?: string;
-  /** Optional comma-separated allow-list of hosts, e.g. "clawbuilders.club,*.pages.dev". */
+  /** Optional allow-list of hosts, comma or space separated, e.g. "clawbuilders.club, *.my-app.pages.dev". */
   ALLOWED_HOSTS?: string;
 }
 
@@ -37,7 +37,8 @@ export default {
     } catch {
       return Response.json({ error: "Body must be JSON: {\"url\": \"https://…\"}" }, { status: 400 });
     }
-    const target = validateTargetUrl(body.url, env.ALLOWED_HOSTS);
+    const resolve = cachedResolver(dohResolver()); // one DNS cache per audit run, shared with the in-browser request guard
+    const target = await validateTargetUrl(body.url, env.ALLOWED_HOSTS, resolve);
     if (!target.ok) return Response.json({ error: target.reason }, { status: 400 });
 
     try {
