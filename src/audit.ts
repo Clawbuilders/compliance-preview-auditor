@@ -1,6 +1,6 @@
 import puppeteer from "@cloudflare/puppeteer";
 import { runAxe } from "./axe-browser";
-import { AuditRefusedError } from "./errors";
+import { AuditRefusedError, BrowserLimitError, isBrowserLimitError } from "./errors";
 import { createRequestGuard, type RequestKind } from "./guard";
 import { classifyRequests, type RecordedRequest } from "./network";
 import type { AuditResult } from "./report";
@@ -25,7 +25,13 @@ const SETTLE_MS = 1500; // let late-firing trackers show up before we stop liste
  * and subresources aimed at IP literals or internal names are aborted. Aborted requests are still recorded, marked blocked.
  */
 export async function auditUrl(env: AuditEnv, url: URL, resolve: Resolver): Promise<AuditResult> {
-  const browser = await puppeteer.launch(env.BROWSER);
+  let browser: Awaited<ReturnType<typeof puppeteer.launch>>;
+  try {
+    browser = await puppeteer.launch(env.BROWSER);
+  } catch (e) {
+    if (isBrowserLimitError(e)) throw new BrowserLimitError(e instanceof Error ? e.message : String(e));
+    throw e;
+  }
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });

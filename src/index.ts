@@ -1,5 +1,5 @@
 import { auditUrl } from "./audit";
-import { AuditRefusedError } from "./errors";
+import { AuditRefusedError, BrowserLimitError } from "./errors";
 import { renderReport } from "./report";
 import { cachedResolver, dohResolver, validateTargetUrl } from "./url";
 import type { AiBinding } from "./vision";
@@ -51,6 +51,7 @@ export default {
       return Response.json({ result, markdown });
     } catch (e) {
       if (e instanceof AuditRefusedError) return Response.json({ error: e.message }, { status: 400 });
+      if (e instanceof BrowserLimitError) return Response.json({ error: e.message }, { status: 429, headers: { "retry-after": "20" } });
       console.error("audit failed", e);
       return Response.json({ error: `The audit could not be completed: ${e instanceof Error ? e.message : String(e)}` }, { status: 502 });
     }
